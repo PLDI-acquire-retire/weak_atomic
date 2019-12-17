@@ -45,10 +45,6 @@ using ArcAtomicSharedPtrWaitfree = weak_atomic<std::shared_ptr<T>, AcquireRetire
 template<typename T>
 using ArcAtomicMySharedPtrWaitfree = weak_atomic<my_shared_ptr<T>, AcquireRetireWaitfree>;
 
-// Our weak atomic wrapper around a home-brewed shared pointer
-template<typename T>
-using ArcAtomicMySharedPtrWaitfreeUnbounded = weak_atomic<my_shared_ptr<T>, AcquireRetireWaitfreeUnbounded>;
-
 // Our weak atomic wrapper around a standard library shared pointer
 template<typename T>
 using ArcAtomicSharedPtrLockfree = weak_atomic<std::shared_ptr<T>, AcquireRetireLockfree>;
@@ -125,7 +121,6 @@ void run_all_benchmarks() {
   run_benchmarks<BenchmarkType, StlAtomicSharedPtr, std::shared_ptr, SameType>("libstdc++ atomic shared ptr");
   run_benchmarks<BenchmarkType, ArcAtomicSharedPtrWaitfree, std::shared_ptr, SameType>("ARC Weak Atomic std::shared_ptr (waitfree)");
   run_benchmarks<BenchmarkType, ArcAtomicMySharedPtrWaitfree, my_shared_ptr, reference_counted_t>("ARC Weak Atomic my_shared_ptr (waitfree)");
-  run_benchmarks<BenchmarkType, ArcAtomicMySharedPtrWaitfreeUnbounded, my_shared_ptr, reference_counted_t>("ARC Weak Atomic my_shared_ptr (waitfree) with unbounded sequence numbers");
   run_benchmarks<BenchmarkType, ArcAtomicSharedPtrLockfree, std::shared_ptr, SameType>("ARC Weak Atomic std::shared_ptr (lockfree)");
   run_benchmarks<BenchmarkType, ArcAtomicMySharedPtrLockfree, my_shared_ptr, reference_counted_t>("ARC Weak Atomic my_shared_ptr (lockfree)");
 }

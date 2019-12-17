@@ -23,6 +23,7 @@ struct AcquireRetireLockfree {
     T empty;
     T announce;
     std::vector<T> retired;
+    std::vector<T> free;
     AcquireRetireLockfree* parent;
     
 
@@ -44,15 +45,23 @@ struct AcquireRetireLockfree {
       retired.push_back(t);
     }
 
-    std::vector<T> eject() {
-      if(retired.size() == 3*MAX_THREADS)
-        return eject_all();
-      else
-        return {};
+    std::optional<T> eject() {
+      if(retired.size() == AcquireRetireLockfree::RECLAIM_DELAY*MAX_THREADS)
+      {
+        std::vector<T> tmp = eject_all();
+        free.insert(free.end(), tmp.begin(), tmp.end());
+      }
+      
+      if(free.empty()) return std::nullopt;
+      else {
+        T ret = free.back();
+        free.pop_back();
+        return ret;
+      }
     }
 
     std::vector<T> eject_all() {
-      std::unordered_set<T> held;
+      std::unordered_set<T, utils::CustomHash<T>> held;
       std::vector<T> ejected;
       for (auto &x : parent->slots) {
         T reserved = x.announce; // this read does not need to be atomic
@@ -63,7 +72,10 @@ struct AcquireRetireLockfree {
         if (held.find(x) == held.end()) {
           ejected.push_back(x);
           return true;
-        } else return false;
+        } else {
+          held.erase(x);
+          return false;
+        }
       };
       retired.erase(remove_if(retired.begin(), retired.end(), f),
           retired.end());
@@ -75,6 +87,7 @@ struct AcquireRetireLockfree {
   T empty;  
   std::atomic<int> num_slots;
   std::vector<slot_t> slots;
+  static const int RECLAIM_DELAY = 10;
   
   AcquireRetireLockfree(const AcquireRetireLockfree&) = delete;
   AcquireRetireLockfree& operator=(AcquireRetireLockfree const&) = delete;

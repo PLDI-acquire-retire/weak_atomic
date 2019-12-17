@@ -9,72 +9,74 @@
 #include "utils.hpp"
 #include "weak_llsc.hpp"
 
+// T must be a plain old data type
 template <class T>
 struct destination {
-  struct val_or_ptr {
-    val_or_ptr() : val(T()), is_val(true) {};
-    val_or_ptr(T _val) : val(_val), is_val(true) {};
-    val_or_ptr(T* _ptr) : ptr(_ptr), is_val(false) {};
+  struct Data {
+    Data() : val(T()), ptr(nullptr) {}
+    Data(T _val) : val(_val), ptr(nullptr) {};
+    Data(T* _ptr) : ptr(_ptr) {};
 
-    union {
-      T val;
-      T* ptr;
-    };
-    bool is_val;
+    T val;
+    T* ptr;
   };
 
-  weak_llsc<val_or_ptr> data;
-  T old;
+  weak_llsc<Data> data;
+  alignas(16) T old;
 
-  destination() : data(val_or_ptr(T())), old(T()) {};
-  destination(T _val) : data(val_or_ptr(_val)), old(T()) {};
+  destination() : data(Data(T())), old(T()) {};
+  destination(T _val) : data(Data(_val)), old(T()) {};
 
   T read() {
-    std::optional<val_or_ptr> c = data.weak_LL();
-    if(!c) {
-      c = data.weak_LL();
-      if(!c) {
+    std::optional<Data> d = data.weak_LL();
+    if(!d) {
+      d = data.weak_LL();
+      if(!d) {
         //if(sizeof(T) <= 8) std::cout << "1: " << (uint64_t) old << std::endl;
-        return old;
+        return utils::load(&old);
       }
     }
-    // c is guaranteed to not be empty
-    val_or_ptr v = c.value();
-    if(v.is_val) {
+    // d is guaranteed to not be empty
+    Data v = d.value();
+    if(v.ptr == nullptr) {
       //if(sizeof(T) <= 8) std::cout << "2: " << (uint64_t) v.val << std::endl;
       return v.val;
     }
     else {
       T val = *(v.ptr);
-      if(data.SC(val_or_ptr(val))) {
+      if(data.SC(Data(val))) {
         //if(sizeof(T) <= 8) std::cout << "3: " << (uint64_t) val << std::endl;
         return val;
       }
       else {
+        d = data.weak_LL();
+        if(d && d.value().ptr == nullptr)
+          return d.value().val;
         //if(sizeof(T) <= 8) std::cout << "4: " << (uint64_t) old << std::endl;
-        return old;
+        return utils::load(&old);
       }
     }
   }
 
   void write(T new_val) {
-    data.quiescent_write(val_or_ptr(new_val));
-    std::atomic_thread_fence(std::memory_order_seq_cst);
-    // data.weak_LL(); //can't fail
-    // data.SC(val_or_ptr(new_val));
+    // The following store is non-racy because only one process
+    // can call sw_copy and write. This is only need to support
+    // 16 btye types T.
+    // Also the following weak_LL() cannot fail.
+    utils::non_racy_store(&old, data.weak_LL().value().val);
+    data.SC(Data(new_val)); // cannot fail
   }
 
-  T sw_copy(T* src) {
-    old = data.weak_LL().value().val;
-    //data.SC_and_LL(val_or_ptr(src));
-    data.quiescent_write_and_LL(val_or_ptr(src));
+  void sw_copy(T* src) {
+    // The following store is non-racy because only one process
+    // can call sw_copy and write.
+    // Also the following weak_LL() cannot fail.
+    utils::non_racy_store(&old, data.weak_LL().value().val);
+    data.SC(Data(src)); // cannot fail
     T val = *src;
-    data.SC(val_or_ptr(val)); 
-    assert(data.weak_LL().value().is_val);
-    return data.weak_LL().value().val;
-
-    // if(data.SC(val_or_ptr(val))) return val;
-    // else return data.weak_LL().value().val;
+    std::optional<Data> d = data.weak_LL();
+    if(d && d.value().ptr != nullptr)
+      data.SC(Data(val));
   }
 };
 

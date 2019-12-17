@@ -5,7 +5,7 @@
 #include <atomic>
 #include <vector>
 
-#include <atomic_ref_cnt/weak_atomic_large.hpp>
+#include <atomic_ref_cnt/weak_atomic.hpp>
 #include <atomic_ref_cnt/acquire_retire_waitfree.hpp>
 #include <atomic_ref_cnt/acquire_retire_lockfree.hpp>
 
@@ -15,7 +15,7 @@ const int M = 50000;
 
 template <template<typename> typename AcquireRetire>
 void simple_test() {
-  weak_atomic_large<vector<int>, AcquireRetire> vec(5, 6);
+  weak_atomic<vector<int>, AcquireRetire> vec(5, 6);
   thread other ([&] () {
       utils::my_id = 1;
       vector<int> a1(vec.load());
@@ -38,7 +38,7 @@ void simple_test() {
 // two readers one updater
 template <template<typename> typename AcquireRetire>
 void stress_test1() {
-  weak_atomic_large<vector<int>, AcquireRetire> vec(10, 0);
+  weak_atomic<vector<int>, AcquireRetire> vec(10, 0);
   atomic<long long int> sum(0);
 
   utils::my_id = 0;
@@ -74,7 +74,7 @@ void stress_test1() {
 template <template<typename> typename AcquireRetire>
 // one writer, one reader, and one CASer
 void stress_test2() {
-  weak_atomic_large<vector<int>, AcquireRetire> vec(10, 0);
+  weak_atomic<vector<int>, AcquireRetire> vec(10, 0);
   atomic<long long int> sum(0);
 
   utils::my_id = 0;
@@ -112,6 +112,5 @@ void run_all_tests() {
 
 int main () {
   run_all_tests<AcquireRetireWaitfree>();
-  run_all_tests<AcquireRetireWaitfreeUnbounded>();
   run_all_tests<AcquireRetireLockfree>();
 }

@@ -203,7 +203,6 @@ void run_all_tests() {
 
 int main () {
   run_all_tests<AcquireRetireWaitfree>();
-  run_all_tests<AcquireRetireWaitfreeUnbounded>();
   run_all_tests<AcquireRetireLockfree>();
 }
 

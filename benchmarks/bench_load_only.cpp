@@ -84,7 +84,7 @@ struct LoadOnlyBenchmark : Benchmark {
 
   //vector of atomic shared pointers
 
-  vector<Padded<AtomicSPType<DataType<int>>>> asp_vec;
+  vector<utils::Padded<AtomicSPType<DataType<int>>>> asp_vec;
 };
 
 static void print_bench_name(int N, int store_percent, int cas_percent) {

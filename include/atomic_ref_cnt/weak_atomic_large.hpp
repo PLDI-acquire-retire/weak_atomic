@@ -1,6 +1,6 @@
 
-#ifndef WEAK_ATOMIC_H
-#define WEAK_ATOMIC_H
+#ifndef WEAK_ATOMIC_LARGE_H
+#define WEAK_ATOMIC_LARGE_H
 
 #include <thread>
 #include <iostream>
@@ -13,7 +13,6 @@
 #include <string.h>
 
 #include "acquire_retire_waitfree.hpp"
-
 
 // Wraps a potentially large type T in a pointer
 template <class T>
@@ -48,15 +47,7 @@ struct wrapper {
 };
 
 /*
-  This class assumes that T() and ~T() behave reasonably.
-
-  This class can support shared_ptrs, but only through 
-  a level of indirection. It might be worth writing a separate
-  atomic_shared_ptr class.
-
-  This class would be good for a home-brew shared pointer
-
-  I'm going to assume T is 8 btyes for ease of implementation
+  Works for arbitrary large types T. Uses level of indirection.
 */
 template <class T, template<typename> typename AcquireRetire = AcquireRetireWaitfree>
 struct weak_atomic_large {
@@ -105,7 +96,7 @@ struct weak_atomic_large {
       destruct_all(utils::my_id);
     }
 
-    void destruct_all(int tid) {
+    static void destruct_all(int tid) {
       for(P t : ar.slots[tid].eject_all())  
         from_bits(t);
     }
@@ -113,7 +104,7 @@ struct weak_atomic_large {
     // Calls eject_all() for all processes and destructs everything that gets returned
     // Only call this during a quiescent state 
     // Important for cleaning up lingering items in the retired list
-    void clear_all() {
+    static void clear_all() {
       for(int tid = 0; tid < MAX_THREADS; tid++)
         destruct_all(tid);   
     }
@@ -160,4 +151,4 @@ struct weak_atomic_large {
  template<class T, template<typename> typename AcquireRetire>
  AcquireRetire<void*> weak_atomic_large<T, AcquireRetire>::ar{MAX_THREADS, nullptr};
 
-#endif /* WEAK_ATOMIC_H */
+#endif /* WEAK_ATOMIC_LARGE_H */

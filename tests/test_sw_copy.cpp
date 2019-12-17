@@ -7,7 +7,6 @@
 #include <assert.h>
 
 #include <atomic_ref_cnt/sw_copy.hpp>
-#include <atomic_ref_cnt/sw_copy_unbounded.hpp>
 
 using namespace std;
 
@@ -63,7 +62,6 @@ void run_all_tests(){
 }
 
 int main () {
-  run_all_tests<destination_unbounded>();
   run_all_tests<destination>();
   return 0; 
 }
